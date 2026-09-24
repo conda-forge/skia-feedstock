@@ -69,9 +69,11 @@ const TARGET_CPU = {
     linux-64: "x64"
     linux-aarch64: "arm64"
     linux-ppc64le: "ppc64"
+    linux-riscv64: "riscv64"
     osx-64: "x64"
     osx-arm64: "arm64"
     win-64: "x64"
+    win-arm64: "arm64"
 }
 
 # kept literal so nushell interpolation never touches pkg-config's own ${...}
