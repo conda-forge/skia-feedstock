@@ -61,17 +61,26 @@ const GN_ARGS = [
     "skia_enable_spirv_validation=false"
     "skia_use_lua=false"
     "skia_use_wuffs=false"
-    'extra_cflags=["-DSK_DISABLE_LEGACY_PNG_WRITEBUFFER"]'
 ]
+
+const EXTRA_CFLAGS = ["-DSK_DISABLE_LEGACY_PNG_WRITEBUFFER"]
+
+# skcms opts into [[clang::musttail]] for every GCC target except riscv64, but the
+# ppc64le sibling-call ABI cannot satisfy it and GCC turns every stage into a hard
+# error. skcms treats the attribute as an optional optimisation and lets the port
+# define the flag itself, which is what skcms_internals.h checks before deciding.
+const PPC64LE_EXTRA_CFLAGS = ["-DSKCMS_HAS_MUSTTAIL=0"]
 
 # conda target_platform -> GN target_cpu
 const TARGET_CPU = {
     linux-64: "x64"
     linux-aarch64: "arm64"
     linux-ppc64le: "ppc64"
+    linux-riscv64: "riscv64"
     osx-64: "x64"
     osx-arm64: "arm64"
     win-64: "x64"
+    win-arm64: "arm64"
 }
 
 # kept literal so nushell interpolation never touches pkg-config's own ${...}
@@ -122,12 +131,23 @@ def write-user-config [src_dir: string] {
     $"($head)($block)($tail)" | save --raw --force $path
 }
 
+def extra-cflags [target_platform: string]: nothing -> list<string> {
+    if $target_platform == "linux-ppc64le" {
+        $EXTRA_CFLAGS | append $PPC64LE_EXTRA_CFLAGS
+    } else {
+        $EXTRA_CFLAGS
+    }
+}
+
 def gn-args []: nothing -> list<string> {
     let target_platform = $env.target_platform
     if $target_platform not-in $TARGET_CPU {
         error make {msg: $"unsupported target_platform: ($target_platform)"}
     }
-    let base = ($GN_ARGS | append $'target_cpu="($TARGET_CPU | get $target_platform)"')
+    let cflags = (extra-cflags $target_platform | each {|f| $'"($f)"' } | str join ",")
+    let base = ($GN_ARGS
+        | append $'target_cpu="($TARGET_CPU | get $target_platform)"'
+        | append $'extra_cflags=[($cflags)]')
 
     if $nu.os-info.name == "windows" {
         return $base
