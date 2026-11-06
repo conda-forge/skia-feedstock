@@ -23,7 +23,7 @@ source:
     - patches/0001-link-pathops-into-the-skia-component.patch
 
 build:
-  number: 0
+  number: 1
 
 outputs:
   - package:
@@ -77,7 +77,7 @@ outputs:
             - ${{ compiler('cxx') }}
             - ${{ stdlib('c') }}
             - if: unix
-              then: pkg-config
+              then: pkgconf
 
 about:
   homepage: https://skia.org
